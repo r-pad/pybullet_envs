@@ -1,5 +1,5 @@
 [project]
-name = "rpad-python-pkg-template"
+name = "rpad-pybullet-envs"
 version = "0.1.0"
 description = "A Python Package Template"
 readme = "README.md"

@@ -1,4 +1,4 @@
-# python_pkg_template
+# pybullet_envs
 
 Some sample text for the website.
 

@@ -1,6 +1,7 @@
-from typing import Dict, TypedDict
+from typing import Dict, Tuple, TypedDict
 
 import numpy as np
+import numpy.typing as npt
 import pybullet as p
 
 DEFAULT_RENDER_WIDTH = 640
@@ -42,14 +43,14 @@ def get_pointcloud(depth, intrinsics):
 
 
 class Render(TypedDict, total=False):
-    rgb: np.ndarray
-    depth: np.ndarray
-    seg: np.ndarray
-    P_cam: np.ndarray
-    P_world: np.ndarray
-    P_rgb: np.ndarray
-    pc_seg: np.ndarray
-    segmap: Dict[int, tuple]
+    rgb: npt.NDArray[np.uint8]
+    depth: npt.NDArray[np.float32]
+    seg: npt.NDArray[np.uint8]
+    P_cam: npt.NDArray[np.float32]
+    P_world: npt.NDArray[np.float32]
+    P_rgb: npt.NDArray[np.uint8]
+    pc_seg: npt.NDArray[np.uint8]
+    segmap: Dict[int, Tuple[int, int]]
 
 
 class Camera:
@@ -165,20 +166,30 @@ class Camera:
 
         # Undoing the bitmask so we can get the obj_id, link_index
 
-        output = {
-            "rgb": rgb,
-            "depth": depth,
-            "seg": seg,
-            "P_cam": P_cam,
-            "P_world": P_world,
-            "P_rgb": P_rgb,
-            "pc_seg": pc_seg,
+        # output = {
+        #     "rgb": rgb,
+        #     "depth": depth,
+        #     "seg": seg,
+        #     "P_cam": P_cam,
+        #     "P_world": P_world,
+        #     "P_rgb": P_rgb,
+        #     "pc_seg": pc_seg,
+        # }
+        output: Render = {
+            "rgb": np.asarray(rgb).astype(np.uint8),
+            "depth": np.asarray(depth).astype(np.float32),
+            "seg": np.asarray(seg).astype(np.uint8),
+            "P_cam": np.asarray(P_cam).astype(np.float32),
+            "P_world": np.asarray(P_world).astype(np.float32),
+            "P_rgb": np.asarray(P_rgb).astype(np.uint8),
+            "pc_seg": np.asarray(pc_seg).astype(np.uint8),
         }
 
         if link_seg:
+            labels = [int(label) for label in np.unique(seg)]
             segmap = {
                 label: ((label & ((1 << 24) - 1)), (label >> 24) - 1)
-                for label in np.unique(seg)
+                for label in labels
             }
             output["segmap"] = segmap
 

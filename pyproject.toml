@@ -9,8 +9,10 @@ authors = [
   {email = "baeisner@andrew.cmu.edu", name = "Ben Eisner"}
 ]
 dependencies = [
+  "importlib_resources; python_version < '3.9'",
   "pybullet",
   "numpy",
+  "scipy",
 ]
 
 [build-system]
@@ -64,6 +66,7 @@ explicit_package_bases = true
 module = [
   "pybullet.*",
   "pybullet_data.*",
+  "scipy.*",
 ]
 ignore_missing_imports = true
 

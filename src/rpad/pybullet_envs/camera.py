@@ -24,7 +24,7 @@ T_CAMGL_2_CAM = np.array(
 )
 
 
-def get_pointcloud(depth, intrinsics):
+def get_pointcloud(depth, intrinsics) -> npt.NDArray[np.float32]:
     """Get 3D pointcloud from perspective depth image.
     Args:
       depth: HxW float array of perspective depth in meters.
@@ -38,7 +38,9 @@ def get_pointcloud(depth, intrinsics):
     px, py = np.meshgrid(xlin, ylin)
     px = (px - intrinsics[0, 2]) * (depth / intrinsics[0, 0])
     py = (py - intrinsics[1, 2]) * (depth / intrinsics[1, 1])
-    points = np.float32([px, py, depth]).transpose(1, 2, 0)
+    points: npt.NDArray[np.float32] = np.asarray(
+        [px, py, depth], dtype=np.float32
+    ).transpose(1, 2, 0)
     return points
 
 
@@ -164,17 +166,6 @@ class Camera:
         Ph_world = (self.T_world2cam @ Ph_cam.T).T
         P_world = Ph_world[:, :3]
 
-        # Undoing the bitmask so we can get the obj_id, link_index
-
-        # output = {
-        #     "rgb": rgb,
-        #     "depth": depth,
-        #     "seg": seg,
-        #     "P_cam": P_cam,
-        #     "P_world": P_world,
-        #     "P_rgb": P_rgb,
-        #     "pc_seg": pc_seg,
-        # }
         output: Render = {
             "rgb": np.asarray(rgb).astype(np.uint8),
             "depth": np.asarray(depth).astype(np.float32),
@@ -185,6 +176,7 @@ class Camera:
             "pc_seg": np.asarray(pc_seg).astype(np.uint8),
         }
 
+        # Undoing the bitmask so we can get the obj_id, link_index
         if link_seg:
             labels = [int(label) for label in np.unique(seg)]
             segmap = {

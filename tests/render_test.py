@@ -20,3 +20,5 @@ def test_simple_render():
 
     # Render the camera.
     render = camera.render(client_id=client_id)
+
+    p.disconnect(client_id)

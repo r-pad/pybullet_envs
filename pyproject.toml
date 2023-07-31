@@ -10,6 +10,7 @@ authors = [
 ]
 dependencies = [
   "pybullet",
+  "numpy",
 ]
 
 [build-system]
@@ -63,3 +64,6 @@ explicit_package_bases = true
 # module = [
 # ]
 # ignore_missing_imports = true
+
+[tool.pylint.TYPECHECK]
+generated-members = "numpy.*,pybullet.*"

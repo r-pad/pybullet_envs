@@ -42,13 +42,18 @@ build_docs = [
 ]
 
 # This is required to allow us to have notebooks/ at the top level.
+# The reason we included .../environments is because it's the only way to include
+# a package, since it is the lowest in the chain with an __init__.py file. Otherwise
+# we could have just included all the way down to assets/ur5/suction, but for
+# some reason that wasn't working in 3.9. Don't fully understand, cuz it was working
+# in 3.10. Whatever.
 [tool.setuptools]
 packages = ["rpad", "rpad_pybullet_envs_data"]
-package-dir = {rpad = "src/rpad", rpad_pybullet_envs_data = "third_party/ravens/ravens/environments/assets/ur5/suction"}
+package-dir = {rpad = "src/rpad", rpad_pybullet_envs_data = "third_party/ravens/ravens/environments"}
 
 [tool.setuptools.package-data]
 rpad = ["py.typed"]
-rpad_pybullet_envs_data = ["*"]
+rpad_pybullet_envs_data = ["assets/ur5/suction/*.obj", "assets/ur5/suction/*.urdf"]
 
 [tool.isort]
 profile = "black"
@@ -73,6 +78,6 @@ ignore_missing_imports = true
 [tool.pylint.TYPECHECK]
 generated-members = "numpy.*,pybullet.*"
 
-# Tell pytest to ignore third_party/
+# Tell pytest to ignore third_party/ and build/ using ignore
 [tool.pytest.ini_options]
-norecursedirs = "third_party"
+addopts = ["--ignore=third_party", "--ignore=build"]

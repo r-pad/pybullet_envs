@@ -1,7 +1,8 @@
-import importlib.resources
+import os
+from importlib.resources import as_file, files  # type: ignore
 
 
 def test_import():
-    fs = importlib.resources.files("rpad_pybullet_envs_data")
-    files = {f.name for f in fs.iterdir()}
-    assert "base.obj" in files
+    fn = as_file(files("rpad_pybullet_envs_data").joinpath("assets/ur5/suction"))
+    with fn as f:
+        assert "base.obj" in set(os.listdir(f))

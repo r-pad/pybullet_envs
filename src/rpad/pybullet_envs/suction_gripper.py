@@ -1,21 +1,14 @@
+import os
 from importlib.resources import as_file, files  # type: ignore
 
 import numpy as np
 import pybullet as p
 from scipy.spatial.transform import Rotation as R
 
-# from part_embedding.envs.debug_viz import draw_pose
-
-# __ASSETS_CHUNK = "assets"
-# ASSETS_DIR = Path(__file__).parent / __ASSETS_CHUNK
-# SUCTION_BASE_URDF = str(ASSETS_DIR / "suction/suction-base.urdf")
-# SUCTION_HEAD_URDF = str(ASSETS_DIR / "suction/suction-head.urdf")
-
-_DATA_PACKAGE = files("rpad_pybullet_envs_data")
-with as_file(_DATA_PACKAGE.joinpath("suction-base.urdf")) as f:
-    SUCTION_BASE_URDF = str(f)
-with as_file(_DATA_PACKAGE.joinpath("suction-head.urdf")) as f:
-    SUCTION_HEAD_URDF = str(f)
+fn = as_file(files("rpad_pybullet_envs_data").joinpath("assets/ur5/suction"))
+with fn as f:
+    SUCTION_BASE_URDF = os.path.join(f, "suction-base.urdf")
+    SUCTION_HEAD_URDF = os.path.join(f, "suction-head.urdf")
 
 
 class FloatingSuctionGripper:

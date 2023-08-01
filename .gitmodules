@@ -1,3 +1,4 @@
 [submodule "third_party/ravens"]
 	path = third_party/ravens
 	url = https://github.com/google-research/ravens.git
+	ignore = dirty

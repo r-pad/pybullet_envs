@@ -4,23 +4,18 @@ version = "0.1.0"
 description = "A Python Package Template"
 readme = "README.md"
 requires-python = ">=3.6"
-license = {file = "LICENSE.txt"}
-authors = [
-  {email = "baeisner@andrew.cmu.edu", name = "Ben Eisner"}
-]
+license = { file = "LICENSE.txt" }
+authors = [{ email = "baeisner@andrew.cmu.edu", name = "Ben Eisner" }]
 dependencies = [
   "importlib_resources; python_version < '3.9'",
   "pybullet",
   "numpy",
+  "rpad-pybullet-libs @ git+https://github.com/r-pad/pybullet_libs.git",
   "scipy",
 ]
 
 [build-system]
-requires = [
-  "setuptools >= 62.3.2",
-  "setuptools-scm",
-  "wheel",
-]
+requires = ["setuptools >= 62.3.2", "setuptools-scm", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project.optional-dependencies]
@@ -33,13 +28,8 @@ develop = [
   "pytest == 7.3.2",
   "pre-commit == 3.3.3",
 ]
-notebooks = [
-  "jupyter",
-]
-build_docs = [
-  "mkdocs-material",
-  "mkdocstrings[python]",
-]
+notebooks = ["jupyter"]
+build_docs = ["mkdocs-material", "mkdocstrings[python]"]
 
 # This is required to allow us to have notebooks/ at the top level.
 # The reason we included .../environments is because it's the only way to include
@@ -49,11 +39,14 @@ build_docs = [
 # in 3.10. Whatever.
 [tool.setuptools]
 packages = ["rpad", "rpad_pybullet_envs_data"]
-package-dir = {rpad = "src/rpad", rpad_pybullet_envs_data = "third_party/ravens/ravens/environments"}
+package-dir = { rpad = "src/rpad", rpad_pybullet_envs_data = "third_party/ravens/ravens/environments" }
 
 [tool.setuptools.package-data]
 rpad = ["py.typed"]
-rpad_pybullet_envs_data = ["assets/ur5/suction/*.obj", "assets/ur5/suction/*.urdf"]
+rpad_pybullet_envs_data = [
+  "assets/ur5/suction/*.obj",
+  "assets/ur5/suction/*.urdf",
+]
 
 [tool.isort]
 profile = "black"
@@ -68,11 +61,7 @@ explicit_package_bases = true
 
 # Uncomment this when you have imports for mypy to ignore.
 [[tool.mypy.overrides]]
-module = [
-  "pybullet.*",
-  "pybullet_data.*",
-  "scipy.*",
-]
+module = ["pybullet.*", "pybullet_data.*", "scipy.*"]
 ignore_missing_imports = true
 
 [tool.pylint.TYPECHECK]

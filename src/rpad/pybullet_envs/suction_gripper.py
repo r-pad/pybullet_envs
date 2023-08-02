@@ -1,5 +1,9 @@
 import os
-from importlib.resources import as_file, files  # type: ignore
+
+try:
+    from importlib.resources import as_file, files  # type: ignore
+except ImportError:
+    from importlib_resources import as_file, files  # type: ignore
 
 import numpy as np
 import pybullet as p

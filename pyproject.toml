@@ -8,8 +8,9 @@ license = { file = "LICENSE.txt" }
 authors = [{ email = "baeisner@andrew.cmu.edu", name = "Ben Eisner" }]
 dependencies = [
   "importlib_resources; python_version < '3.9'",
-  "pybullet",
+  "gymnasium",
   "numpy",
+  "pybullet",
   "rpad-pybullet-libs @ git+https://github.com/r-pad/pybullet_libs.git",
   "scipy",
 ]
@@ -30,6 +31,7 @@ develop = [
 ]
 notebooks = ["jupyter"]
 build_docs = ["mkdocs-material", "mkdocstrings[python]"]
+pm = ["rpad-partnet-mobility-utils @ git+https://github.com/r-pad/partnet_mobility_utils"]
 
 # This is required to allow us to have notebooks/ at the top level.
 # The reason we included .../environments is because it's the only way to include

@@ -31,7 +31,10 @@ develop = [
 ]
 notebooks = ["jupyter"]
 build_docs = ["mkdocs-material", "mkdocstrings[python]"]
-pm = ["rpad-partnet-mobility-utils @ git+https://github.com/r-pad/partnet_mobility_utils"]
+pm = [
+  "rpad-partnet-mobility-utils @ git+https://github.com/r-pad/partnet_mobility_utils",
+  "rpad-visualize-3d @ https://github.com/r-pad/visualize_3d.git",
+]
 
 # This is required to allow us to have notebooks/ at the top level.
 # The reason we included .../environments is because it's the only way to include

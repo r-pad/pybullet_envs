@@ -33,7 +33,7 @@ notebooks = ["jupyter"]
 build_docs = ["mkdocs-material", "mkdocstrings[python]"]
 pm = [
   "rpad-partnet-mobility-utils @ git+https://github.com/r-pad/partnet_mobility_utils",
-  "rpad-visualize-3d @ https://github.com/r-pad/visualize_3d.git",
+  "rpad-visualize-3d @ git+https://github.com/r-pad/visualize_3d.git",
 ]
 
 # This is required to allow us to have notebooks/ at the top level.

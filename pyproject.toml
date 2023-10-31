@@ -66,7 +66,12 @@ explicit_package_bases = true
 
 # Uncomment this when you have imports for mypy to ignore.
 [[tool.mypy.overrides]]
-module = ["pybullet.*", "pybullet_data.*", "scipy.*"]
+module = [
+  "pybullet.*",
+  "pybullet_data.*",
+  "rpad.partnet_mobility_utils.*",
+  "scipy.*",
+]
 ignore_missing_imports = true
 
 [tool.pylint.TYPECHECK]

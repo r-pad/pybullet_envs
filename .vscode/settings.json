@@ -4,6 +4,10 @@
     "editor.codeActionsOnSave": {
         "source.organizeImports": true
     },
+    "python.linting.pylintArgs": [
+        "--generated-members",
+        "pybullet.*"
+    ],
     "[python]": {
         "editor.defaultFormatter": "ms-python.black-formatter"
     }

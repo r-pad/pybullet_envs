@@ -2,3 +2,6 @@
 	path = third_party/ravens
 	url = https://github.com/google-research/ravens.git
 	ignore = dirty
+[submodule "third_party/where2act"]
+	path = third_party/where2act
+	url = https://github.com/daerduoCarey/where2act.git

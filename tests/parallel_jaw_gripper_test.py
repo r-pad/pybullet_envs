@@ -2,6 +2,7 @@ import pybullet as p
 
 from rpad.pybullet_envs.parallel_jaw_v2 import FloatingParallelJawGripper
 
+
 def test_parallel_jaw_gripper_creation():
     client_id = p.connect(p.DIRECT)
 
@@ -11,4 +12,6 @@ def test_parallel_jaw_gripper_creation():
 
 
 def test_parallel_jaw_gripper():
-    pass
+    client_id = p.connect(p.DIRECT)
+
+    gripper = FloatingParallelJawGripper()

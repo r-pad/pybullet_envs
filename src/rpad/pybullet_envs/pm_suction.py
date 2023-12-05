@@ -316,11 +316,12 @@ def compute_normalized_flow(
 # TODO: this probably needs to be renamed, but PMSuctionEnv is already taken^
 class PMSuctionDemoEnv:
     def __init__(self, obj_id, pm_dataset_path, gripper_path, gui):
-        self.obj_id = obj_id
+        self.obj_id_str = obj_id
         self.obj = PMObject(pm_dataset_path / obj_id)
         self.renderer = PybulletRenderer()
         # initializing SuctionEnv (TODO: probably don't actually need this - everything is re-implemented)
         self.suction_env = PMSuctionEnv(obj_id, pm_dataset_path, gui=gui)
+        self.obj_id = self.suction_env._core_env.obj_id
         # gripper mount pose in world frame
         self._mount_pos = None
         self._mount_ori = None
@@ -347,6 +348,7 @@ class PMSuctionDemoEnv:
         self.contact_const = None
         self.contact_link_index = None
         # goal/demo attributes
+        self.obj_link = 1
         self.goal = p.getJointInfo(
             self.suction_env._core_env.obj_id, 1, self.suction_env._core_env.client_id
         )[9]
@@ -632,19 +634,37 @@ class PMSuctionDemoEnv:
         return link_pc[idx], link_flow[idx]
 
     def generate_demo(self, pull_iters=25):
-        # move and attach to point with max flow
+        demo = []
+        # move to point with max flow, update demo with initial state
         position_start, direction_start = self.select_point()
+        demo.append(
+            {
+                "obs": self.get_obs(),
+                "action": np.concatenate(
+                    ([0], position_start, direction_start), axis=0
+                ),
+            }
+        )
         self.move(position_start, direction_start, 1000)
+        # attach to object, update demo
+        demo.append({"obs": self.get_obs(), "action": np.array([2])})
         self.attach(self.constraint_force)
         # continuously pull in direction of flow
         success = False
         if self.activated:
             for _ in range(pull_iters):
                 _, direction = self.select_point()
+                # pull object, update demo
+                demo.append(
+                    {
+                        "obs": self.get_obs(),
+                        "action": np.concatenate(([1], direction), axis=0),
+                    }
+                )
                 success = self.pull(direction)
                 if success:
                     break
-        return success
+        return success, demo
 
     def debug_joint_forces(self):
         js = p.getJointStatesMultiDof(
@@ -654,3 +674,40 @@ class PMSuctionDemoEnv:
             f'joint {0}: {", ".join(f"{f:.2f}" for f in js[0][3])}   joint {1}: {", ".join(f"{f:.2f}" for f in js[1][3])}   joint {2}: {", ".join(f"{f:.2f}" for f in js[2][3])}    joint {3}: {", ".join(f"{f:.2f}" for f in js[3][3])} '
         )
         return
+
+    def get_obs(self):
+        # camera render
+        camera_obs = self.suction_env.render()
+        rgb = camera_obs["rgb"]
+        depth = camera_obs["depth"]
+        pc_world = camera_obs["P_world"]
+        pc_cam = camera_obs["P_cam"]
+        pc_seg = camera_obs["pc_seg"]
+        segmap = camera_obs["segmap"]
+        # re-indexing point cloud (0: object, 1: object link, 2: gripper)
+        pc_seg_scene = np.ones_like(pc_seg) * -1
+        for k, (body, link) in segmap.items():
+            if body == self.mount_id:
+                # segment gripper
+                ixs = pc_seg == k
+                pc_seg_scene[ixs] = 2
+            elif body == self.obj_id:
+                ixs = pc_seg == k
+                # link, or otherwise
+                if link == self.obj_link:
+                    pc_seg_scene[ixs] = 1
+                else:
+                    pc_seg_scene[ixs] = 0
+        # object joint angle
+        ja = p.getJointState(
+            self.suction_env._core_env.obj_id, 1, self.suction_env._core_env.client_id
+        )[0]
+        obs = {
+            "pc": pc_cam,
+            "seg": pc_seg_scene,
+            "joint_angle": ja,
+            "gripper_pos": self._mount_pos,
+            "gripper_ori": self._mount_ori,
+            "activated": self.activated,
+        }
+        return obs

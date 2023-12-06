@@ -655,10 +655,12 @@ class PMSuctionDemoEnv:
             for _ in range(pull_iters):
                 _, direction = self.select_point()
                 # pull object, update demo
+                # TODO: might need to add a manual check if the demo is valid or not
+                # TODO: there should be a 0 vector for the position vector in the action?
                 demo.append(
                     {
                         "obs": self.get_obs(),
-                        "action": np.concatenate(([1], direction), axis=0),
+                        "action": np.concatenate(([1, 0, 0, 0], direction), axis=0),
                     }
                 )
                 success = self.pull(direction)
@@ -711,3 +713,17 @@ class PMSuctionDemoEnv:
             "activated": self.activated,
         }
         return obs
+
+    def step(self, action):
+        # 0: move, 1: pull, 2: attach
+        a = action[0]
+        if a == 0:
+            pos = action[1:4]
+            dir = action[4:7]
+            self.move(pos, dir, 1000)
+        elif a == 1:
+            dir = action[4:7]
+            self.pull(dir)
+        elif a == 2:
+            self.attach()
+        return self.get_obs()

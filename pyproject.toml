@@ -32,7 +32,7 @@ develop = [
 notebooks = ["jupyter"]
 build_docs = ["mkdocs-material", "mkdocstrings[python]"]
 pm = [
-  "rpad-partnet-mobility-utils @ git+https://github.com/r-pad/partnet_mobility_utils",
+  "rpad-partnet-mobility-utils @ git+https://github.com/r-pad/partnet_mobility_utils.git",
   "rpad-visualize-3d @ git+https://github.com/r-pad/visualize_3d.git",
 ]
 
@@ -47,7 +47,7 @@ packages = ["rpad", "rpad_pybullet_envs_data"]
 package-dir = { rpad = "src/rpad", rpad_pybullet_envs_data = "third_party/ravens/ravens/environments" }
 
 [tool.setuptools.package-data]
-rpad = ["py.typed"]
+rpad = ["py.typed", "assets/suction/*.urdf", "assets/suction/meshes/*.obj"]
 rpad_pybullet_envs_data = [
   "assets/ur5/suction/*.obj",
   "assets/ur5/suction/*.urdf",

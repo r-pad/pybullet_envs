@@ -15,13 +15,13 @@ from rpad.pybullet_envs.pm_suction import PMSuctionDemoEnv
 def test_pm_suction():
     OBJ_ID = "7273"
     PM_DIR = Path(os.path.expanduser("~/datasets/partnet-mobility/dataset"))
-    fn = as_file(
-        files("rpad_pybullet_envs_data").joinpath("assets/ur5/suction_with_mount")
-    )
-    with fn as f:
-        GRIPPER_PATH = os.path.join(f, "suction_with_mount.urdf")
+    # fn = as_file(
+    #     files("rpad_pybullet_envs_data").joinpath("assets/ur5/suction_with_mount")
+    # )
+    # with fn as f:
+    #     GRIPPER_PATH = os.path.join(f, "suction_with_mount.urdf")
 
-    env = PMSuctionDemoEnv(OBJ_ID, PM_DIR, GRIPPER_PATH, False)
+    env = PMSuctionDemoEnv(OBJ_ID, PM_DIR, None, False)
     # initializing environment
     pos_init = np.array([-1.0, 0.6, 0.8])
     ori_init = R.from_euler("xyz", [0, -np.pi / 2, 0]).as_quat()
@@ -29,4 +29,13 @@ def test_pm_suction():
     # generating demonstration
     success, demo = env.generate_demo()
     assert success
+    demo_final_state = demo[-1]["obs"]["ja"]
+
+    print("Sucessful demo obtained.")
     # replication demonstration (TODO: need a proper step function here)
+    # for each action in demo...
+
+    # copy all actions
+
+    # check that final joint state is the same
+    # use self.goal

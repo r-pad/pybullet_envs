@@ -13,6 +13,7 @@ from rpad.partnet_mobility_utils.render.pybullet import PMRenderEnv, PybulletRen
 from scipy.spatial.transform import Rotation as R
 
 from rpad.pybullet_envs.suction_gripper import FloatingSuctionGripper
+from rpad.pybullet_envs.suction_gripper_v2 import SUCTION_URDF
 
 
 def reindex(seg, segmap, obj_id):
@@ -334,7 +335,8 @@ class PMSuctionDemoEnv:
         )
         # loading gripper with mount
         self.mount_id = p.loadURDF(
-            gripper_path,
+            # gripper_path,
+            SUCTION_URDF,
             useFixedBase=True,
             # basePosition=self._mount_base_pos,
             # baseOrientation=p.getQuaternionFromEuler(self._mount_base_ori),
@@ -666,6 +668,8 @@ class PMSuctionDemoEnv:
                 success = self.pull(direction)
                 if success:
                     break
+        # final observation-action pair for termination
+        demo.append({"obs": self.get_obs(), "action": np.array([3])})
         return success, demo
 
     def debug_joint_forces(self):
@@ -715,7 +719,7 @@ class PMSuctionDemoEnv:
         return obs
 
     def step(self, action):
-        # 0: move, 1: pull, 2: attach
+        # 0: move, 1: pull, 2: attach, 3: terminate
         a = action[0]
         if a == 0:
             pos = action[1:4]

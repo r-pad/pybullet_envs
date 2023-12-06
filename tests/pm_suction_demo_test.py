@@ -21,7 +21,9 @@ def test_pm_suction():
     # with fn as f:
     #     GRIPPER_PATH = os.path.join(f, "suction_with_mount.urdf")
 
-    env = PMSuctionDemoEnv(OBJ_ID, PM_DIR, None, False)
+    use_gui = True if "TESTING_GUI" in os.environ else False
+
+    env = PMSuctionDemoEnv(OBJ_ID, PM_DIR, None, use_gui)
     # initializing environment
     pos_init = np.array([-1.0, 0.6, 0.8])
     ori_init = R.from_euler("xyz", [0, -np.pi / 2, 0]).as_quat()
@@ -29,7 +31,7 @@ def test_pm_suction():
     # generating demonstration
     success, demo = env.generate_demo()
     assert success
-    demo_final_state = demo[-1]["obs"]["ja"]
+    # demo_final_state = demo[-1]["obs"]["ja"]
 
     print("Sucessful demo obtained.")
     # replication demonstration (TODO: need a proper step function here)

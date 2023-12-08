@@ -415,6 +415,7 @@ class PMSuctionDemoEnv:
             targetPositions=t_pos,
             # targetVelocities=[0]*3,
             # velocityGains=[10, 10, 10],
+            positionGains=[0.02] * 3,
             forces=[force] * 3,
             physicsClientId=self.suction_env._core_env.client_id,
         )
@@ -636,6 +637,7 @@ class PMSuctionDemoEnv:
         return link_pc[idx], link_flow[idx]
 
     def generate_demo(self, pull_iters=25):
+        # TODO: this function should handle randomization of initial pose + the demo object should contain object id
         demo = []
         # move to point with max flow, update demo with initial state
         position_start, direction_start = self.select_point()
@@ -729,5 +731,5 @@ class PMSuctionDemoEnv:
             dir = action[4:7]
             self.pull(dir)
         elif a == 2:
-            self.attach()
+            self.attach(self.constraint_force)
         return self.get_obs()

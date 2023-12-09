@@ -1,6 +1,8 @@
 import os
 from pathlib import Path
 
+import pytest
+
 try:
     from importlib.resources import as_file, files  # type: ignore
 except ImportError:
@@ -12,6 +14,10 @@ from scipy.spatial.transform import Rotation as R
 from rpad.pybullet_envs.pm_suction import PMSuctionDemoEnv
 
 
+@pytest.mark.skipif(
+    not os.path.exists(os.path.expanduser("~/datasets/partnet-mobility/raw")),
+    reason="requires partnet-mobility dataset",
+)
 def test_pm_suction():
     OBJ_ID = "7273"
     PM_DIR = Path(os.path.expanduser("~/datasets/partnet-mobility/dataset"))

@@ -13,7 +13,7 @@ from rpad.partnet_mobility_utils.render.pybullet import PMRenderEnv, PybulletRen
 from scipy.spatial.transform import Rotation as R
 
 from rpad.pybullet_envs.suction_gripper import FloatingSuctionGripper
-from rpad.pybullet_envs.suction_gripper_v2 import SUCTION_URDF
+from rpad.pybullet_envs.suction_gripper_v2 import FloatingSuctionGripperV2
 
 
 def reindex(seg, segmap, obj_id):
@@ -314,7 +314,10 @@ def compute_normalized_flow(
     return normalized_flow
 
 
-# TODO: this probably needs to be renamed, but PMSuctionEnv is already taken^
+# max simulation steps for control
+TIMEOUT = 1000
+
+
 class PMSuctionDemoEnv:
     def __init__(self, obj_id, pm_dataset_path, gripper_path, gui):
         self.obj_id_str = obj_id
@@ -323,9 +326,6 @@ class PMSuctionDemoEnv:
         # initializing SuctionEnv (TODO: probably don't actually need this - everything is re-implemented)
         self.suction_env = PMSuctionEnv(obj_id, pm_dataset_path, gui=gui)
         self.obj_id = self.suction_env._core_env.obj_id
-        # gripper mount pose in world frame
-        self._mount_pos = None
-        self._mount_ori = None
         # TODO: removing default gripper from suction env - maybe just re-implement different version of PMSuctionEnv?
         p.removeBody(
             self.suction_env.gripper.base_id, self.suction_env._core_env.client_id
@@ -333,23 +333,8 @@ class PMSuctionDemoEnv:
         p.removeBody(
             self.suction_env.gripper.body_id, self.suction_env._core_env.client_id
         )
-        # loading gripper with mount
-        self.mount_id = p.loadURDF(
-            # gripper_path,
-            SUCTION_URDF,
-            useFixedBase=True,
-            # basePosition=self._mount_base_pos,
-            # baseOrientation=p.getQuaternionFromEuler(self._mount_base_ori),
-            globalScaling=1,
-            physicsClientId=self.suction_env._core_env.client_id,
-        )
-        # contact attributes
-        self.constraint_force = 10000
-        self.gripper_contact_link = 4
-        self.activated = False
-        self.contact_const = None
-        self.contact_link_index = None
-        # goal/demo attributes
+        self.gripper = FloatingSuctionGripperV2(self.suction_env._core_env.client_id)
+        # goal attributes
         self.obj_link = 1
         self.goal = p.getJointInfo(
             self.suction_env._core_env.obj_id, 1, self.suction_env._core_env.client_id
@@ -357,24 +342,15 @@ class PMSuctionDemoEnv:
         self.success_threshold = 0.9
 
     def reset(self, pos_init, ori_init):
-        # deactivating gripper - this will handle updates to self.activated and self.contact_link_index
-        self.release()
+        self.gripper.release()
         # re-setting all object joints
         obj_id = self.suction_env._core_env.obj_id
         for ji in range(p.getNumJoints(obj_id)):
             p.resetJointState(obj_id, ji, 0, 0, self.suction_env._core_env.client_id)
         # re-setting gripper with initial pose and orientation
-        for ji, js in enumerate(pos_init):
-            p.resetJointState(
-                self.mount_id, ji, js, 0, self.suction_env._core_env.client_id
-            )
-        p.resetJointStateMultiDof(
-            self.mount_id, 3, ori_init, [0, 0, 0], self.suction_env._core_env.client_id
-        )
-        self._mount_pos = pos_init
-        self._mount_ori = ori_init
+        self.gripper.set_state(pos_init, ori_init)
+        # TODO: is this necessary?
         p.stepSimulation(self.suction_env._core_env.client_id)
-        return
 
     def render(self):
         obs = self.suction_env.render()
@@ -384,224 +360,45 @@ class PMSuctionDemoEnv:
         # plt.imshow(obs["rgb"])
         fig.show()
 
-    def detect_contact(self):
-        """Helper function to detect contact; this will return the first contact point on the articulated part (door), or None otherwise"""
-        points = p.getContactPoints(
-            bodyA=self.mount_id,
-            bodyB=self.suction_env._core_env.obj_id,
-            linkIndexA=4,
-            physicsClientId=self.suction_env._core_env.client_id,
-        )
-        # search through each point, return the first valid point
-        for point in points:
-            if point[self.gripper_contact_link] == 1:
-                return point
+    def move(self, goal_pos, goal_ori):
+        move_fn = self.gripper.get_move_fn(goal_pos, goal_ori)
+        ctrl, goal_reached = move_fn()
 
-    def move(self, t_pos, t_ori, force):
-        # # target position (from delta)
-        # t_pos = self._mount_pos + np.array(d_pos)
-        # # target orientation - converting rotation to mount frame, then applying to current orientation transform (from delta)
-        # d_ori_R = R.from_euler('xyz', d_ori).as_matrix()
-        # gripper_R = R.from_quat(self._mount_ori).as_matrix()
-        # t_ori = R.from_matrix(gripper_R @ gripper_R.T @ d_ori_R @ gripper_R).as_quat()
-        # self.debug_joint_forces()
-
-        # joint control
-        # TODO: is there some mix of velocity/position gains that makes the trajectory smoother?
-        p.setJointMotorControlArray(
-            self.mount_id,
-            [0, 1, 2],
-            p.POSITION_CONTROL,
-            targetPositions=t_pos,
-            # targetVelocities=[0]*3,
-            # velocityGains=[10, 10, 10],
-            positionGains=[0.02] * 3,
-            forces=[force] * 3,
-            physicsClientId=self.suction_env._core_env.client_id,
-        )
-        p.setJointMotorControlMultiDof(
-            self.mount_id,
-            3,
-            p.POSITION_CONTROL,
-            targetPosition=R.align_vectors(
-                -t_ori.reshape((1, 3)), np.array([[0, 0, -1]])
-            )[0].as_quat(),
-            force=[10, 10, 10],
-            physicsClientId=self.suction_env._core_env.client_id,
-        )
-        # self.debug_joint_forces()
-        max_steps = 1000
+        # contact check
+        contact = self.gripper.detect_contact(self.obj_id, self.obj_link)
         curr_steps = 0
-
-        contact = self.detect_contact() is not None
-        # contact = False
-        while not contact and curr_steps < max_steps:
-            curr_steps += 1
-            # self.debug_joint_forces()
+        while not goal_reached and contact is None and curr_steps < TIMEOUT:
+            # control, sim
+            self.gripper.set_move_cmds(ctrl)
             p.stepSimulation(self.suction_env._core_env.client_id)
             if self.suction_env.gui:
                 time.sleep(1 / 240.0)
-            if curr_steps % 1 == 0:
-                # contact check
-                contact = self.detect_contact() is not None
-        if contact:
-            print("contact detected!")
-        # updating joint states
-        self._mount_pos = np.array(
-            [
-                s[0]
-                for s in p.getJointStates(
-                    self.mount_id, [0, 1, 2], self.suction_env._core_env.client_id
-                )
-            ]
-        )
-        self._mount_ori = p.getJointStateMultiDof(
-            self.mount_id, 3, self.suction_env._core_env.client_id
-        )[0]
+            # check for contact
+            contact = self.gripper.detect_contact(self.obj_id, self.obj_link)
+            if contact is not None:
+                print("Contact detected.")
+            # updating joint states and control signal
+            self.gripper.update_state()
+            ctrl, goal_reached = move_fn()
+            curr_steps += 1
         return
 
-    def attach(self, constraint_force):
-        if not self.activated:
-            # points = p.getContactPoints(bodyA=self.mount_id, bodyB=self.suction_env._core_env.obj_id,
-            #                             linkIndexA=4, physicsClientId=self.suction_env._core_env.client_id)
-            contact = self.detect_contact()
-            # if len(points) != 0:
-            if contact is not None:
-                # We'll choose the first point as the contact.
-                point = contact
-                contact_pos_on_A, contact_pos_on_B = point[5], point[6]
-                obj_id, contact_link = point[2], point[4]
-
-                # Describe the contact point in the TIP FRAME.
-                base_link_pos, base_link_ori, _, _, _, _ = p.getLinkState(
-                    bodyUniqueId=self.mount_id,
-                    linkIndex=self.gripper_contact_link,
-                    computeLinkVelocity=0,
-                    physicsClientId=self.suction_env._core_env.client_id,
-                )
-                T_world_tip = base_link_pos, base_link_ori
-                T_tip_world = p.invertTransform(*T_world_tip)
-                T_world_contact = contact_pos_on_A, base_link_ori
-                T_tip_contact = p.multiplyTransforms(*T_tip_world, *T_world_contact)
-
-                # Describe the contact point in the OBJ FRAME. Note that we use the
-                # orientation of the gripper
-                objcom_link_pos, objcom_link_ori, _, _, _, _ = p.getLinkState(
-                    bodyUniqueId=obj_id,
-                    linkIndex=contact_link,
-                    computeLinkVelocity=0,
-                    physicsClientId=self.suction_env._core_env.client_id,
-                )
-                T_world_objcom = objcom_link_pos, objcom_link_ori
-                T_objcom_world = p.invertTransform(*T_world_objcom)
-                T_obj_contact = p.multiplyTransforms(*T_objcom_world, *T_world_contact)
-
-                # Short names so we can debug later (parent frame; child frame),
-                pfp, pfo = T_tip_contact
-                cfp, cfo = T_obj_contact
-
-                self.contact_const = p.createConstraint(
-                    parentBodyUniqueId=self.mount_id,
-                    parentLinkIndex=self.gripper_contact_link,
-                    childBodyUniqueId=obj_id,
-                    childLinkIndex=contact_link,
-                    jointType=p.JOINT_FIXED,
-                    jointAxis=(0, 0, 0),
-                    # parentFramePosition=[0, 0, 0],
-                    parentFramePosition=pfp,
-                    parentFrameOrientation=pfo,
-                    childFramePosition=cfp,
-                    childFrameOrientation=cfo,
-                    physicsClientId=self.suction_env._core_env.client_id,
-                )
-                p.changeConstraint(
-                    self.contact_const,
-                    maxForce=constraint_force,
-                    physicsClientId=self.suction_env._core_env.client_id,
-                )
-                self.activated = True
-                self.contact_link_index = contact_link
-            else:
-                print("not in contact - no valid points to attach to.")
-
-    def release(self):
-        if self.contact_const:
-            p.removeConstraint(self.contact_const, self.suction_env._core_env.client_id)
-            self.contact_const = None
-        self.activated = False
-        self.contact_link_index = None
-
-    def pull(self, direction, speed_factor=0.2, n_steps=100):
-        if self.activated:
+    def pull(self, direction, n_steps=100):
+        if self.gripper.activated:
             direction = np.asarray(direction)
             direction = direction / np.linalg.norm(direction, axis=-1)
-            # p.setJointMotorControlArray(
-            #         self.mount_id,
-            #         [0, 1, 2],
-            #         p.VELOCITY_CONTROL,
-            #         targetVelocities=direction*0.1,
-            #         #velocityGains=[velocityGain] * 3,
-            #         physicsClientId=self.suction_env._core_env.client_id,
-            #         forces=[force]*3,
-            #     )
-            # p.setJointMotorControlArray(
-            #     self.mount_id,
-            #     [0, 1, 2],
-            #     p.POSITION_CONTROL,
-            #     targetPositions=self._mount_pos + 0.05*direction,
-            #     physicsClientId=self.suction_env._core_env.client_id,
-            #         forces=[force]*3,
-            # )
-            # p.setJointMotorControlMultiDof(
-            #         self.mount_id,
-            #         3,
-            #         p.POSITION_CONTROL,
-            #         targetPosition=R.align_vectors(-direction.reshape((1, 3)), np.array([[0, 0, -1]]))[0].as_quat(),
-            #         physicsClientId=self.suction_env._core_env.client_id,
-            #     )
+            pull_fn = self.gripper.get_pull_fn(direction)
+            ctrl, goal_reached = pull_fn()
 
-            # get joint info, lower, upper (TODO: define this as a class attribute?)
-            # goal = p.getJointInfo(self.suction_env._core_env.obj_id, 1, self.suction_env._core_env.client_id)[9]
             for _ in range(n_steps):
-                # set and simulate velocity
-                p.resetJointState(
-                    self.mount_id,
-                    0,
-                    self._mount_pos[0],
-                    speed_factor * direction[0],
-                    self.suction_env._core_env.client_id,
-                )
-                p.resetJointState(
-                    self.mount_id,
-                    1,
-                    self._mount_pos[1],
-                    speed_factor * direction[1],
-                    self.suction_env._core_env.client_id,
-                )
-                p.resetJointState(
-                    self.mount_id,
-                    2,
-                    self._mount_pos[2],
-                    speed_factor * direction[2],
-                    self.suction_env._core_env.client_id,
-                )
+                # control, sim
+                self.gripper.set_pull_cmds(ctrl)
                 p.stepSimulation(self.suction_env._core_env.client_id)
-                # update joint states
-                self._mount_pos = np.array(
-                    [
-                        s[0]
-                        for s in p.getJointStates(
-                            self.mount_id,
-                            [0, 1, 2],
-                            self.suction_env._core_env.client_id,
-                        )
-                    ]
-                )
-                self._mount_ori = p.getJointStateMultiDof(
-                    self.mount_id, 3, self.suction_env._core_env.client_id
-                )[0]
                 if self.suction_env.gui:
                     time.sleep(1 / 240.0)
+                # updating joint states and control signal
+                self.gripper.update_state()
+                ctrl, goal_reached = pull_fn()
                 # goal check
                 current = p.getJointState(
                     self.suction_env._core_env.obj_id,
@@ -611,8 +408,7 @@ class PMSuctionDemoEnv:
                 if current / self.goal > self.success_threshold:
                     return True
         else:
-            print("cannot pull - not attached")
-        return False
+            print("Cannot pull - not attached.")
 
     def select_point(self):
         joints = self.suction_env._core_env.get_joint_angles()
@@ -649,13 +445,13 @@ class PMSuctionDemoEnv:
                 ),
             }
         )
-        self.move(position_start, direction_start, 1000)
+        self.move(position_start, direction_start)
         # attach to object, update demo
         demo.append({"obs": self.get_obs(), "action": np.array([2])})
-        self.attach(self.constraint_force)
+        self.gripper.activate(self.obj_id, self.obj_link)
         # continuously pull in direction of flow
         success = False
-        if self.activated:
+        if self.gripper.activated:
             for _ in range(pull_iters):
                 _, direction = self.select_point()
                 # pull object, update demo
@@ -674,15 +470,6 @@ class PMSuctionDemoEnv:
         demo.append({"obs": self.get_obs(), "action": np.array([3])})
         return success, demo
 
-    def debug_joint_forces(self):
-        js = p.getJointStatesMultiDof(
-            self.mount_id, [0, 1, 2, 3], self.suction_env._core_env.client_id
-        )
-        print(
-            f'joint {0}: {", ".join(f"{f:.2f}" for f in js[0][3])}   joint {1}: {", ".join(f"{f:.2f}" for f in js[1][3])}   joint {2}: {", ".join(f"{f:.2f}" for f in js[2][3])}    joint {3}: {", ".join(f"{f:.2f}" for f in js[3][3])} '
-        )
-        return
-
     def get_obs(self):
         # camera render
         camera_obs = self.suction_env.render()
@@ -695,7 +482,7 @@ class PMSuctionDemoEnv:
         # re-indexing point cloud (0: object, 1: object link, 2: gripper)
         pc_seg_scene = np.ones_like(pc_seg) * -1
         for k, (body, link) in segmap.items():
-            if body == self.mount_id:
+            if body == self.gripper.mount_id:
                 # segment gripper
                 ixs = pc_seg == k
                 pc_seg_scene[ixs] = 2
@@ -714,9 +501,9 @@ class PMSuctionDemoEnv:
             "pc": pc_cam,
             "seg": pc_seg_scene,
             "joint_angle": ja,
-            "gripper_pos": self._mount_pos,
-            "gripper_ori": self._mount_ori,
-            "activated": self.activated,
+            "gripper_pos": self.gripper.gripper_pos,
+            "gripper_ori": self.gripper.gripper_ori,
+            "activated": self.gripper.activated,
         }
         return obs
 
@@ -726,10 +513,10 @@ class PMSuctionDemoEnv:
         if a == 0:
             pos = action[1:4]
             dir = action[4:7]
-            self.move(pos, dir, 1000)
+            self.move(pos, dir)
         elif a == 1:
             dir = action[4:7]
             self.pull(dir)
         elif a == 2:
-            self.attach(self.constraint_force)
+            self.gripper.activate(self.obj_id, self.obj_link)
         return self.get_obs()

@@ -319,41 +319,34 @@ TIMEOUT = 1000
 
 
 class PMSuctionDemoEnv:
-    def __init__(self, obj_id, pm_dataset_path, gripper_path, gui):
+    def __init__(self, obj_id, pm_dataset_path, gui):
         self.obj_id_str = obj_id
         self.obj = PMObject(pm_dataset_path / obj_id)
         self.renderer = PybulletRenderer()
-        # initializing SuctionEnv (TODO: probably don't actually need this - everything is re-implemented)
-        self.suction_env = PMSuctionEnv(obj_id, pm_dataset_path, gui=gui)
-        self.obj_id = self.suction_env._core_env.obj_id
-        # TODO: removing default gripper from suction env - maybe just re-implement different version of PMSuctionEnv?
-        p.removeBody(
-            self.suction_env.gripper.base_id, self.suction_env._core_env.client_id
-        )
-        p.removeBody(
-            self.suction_env.gripper.body_id, self.suction_env._core_env.client_id
-        )
-        self.gripper = FloatingSuctionGripperV2(self.suction_env._core_env.client_id)
+        self.gui = gui
+        # TODO: Camera initialization needed
+        self._core_env = PMRenderEnv(obj_id, pm_dataset_path, [-2, 0, 2], gui=gui)
+        self.client_id = self._core_env.client_id
+        self.obj_id = self._core_env.obj_id
+        self.gripper = FloatingSuctionGripperV2(self.client_id)
         # goal attributes
         self.obj_link = 1
-        self.goal = p.getJointInfo(
-            self.suction_env._core_env.obj_id, 1, self.suction_env._core_env.client_id
-        )[9]
+        self.goal = p.getJointInfo(self.obj_id, 1, self.client_id)[9]
         self.success_threshold = 0.9
 
     def reset(self, pos_init, ori_init):
         self.gripper.release()
         # re-setting all object joints
-        obj_id = self.suction_env._core_env.obj_id
+        obj_id = self.obj_id
         for ji in range(p.getNumJoints(obj_id)):
-            p.resetJointState(obj_id, ji, 0, 0, self.suction_env._core_env.client_id)
+            p.resetJointState(obj_id, ji, 0, 0, self.client_id)
         # re-setting gripper with initial pose and orientation
         self.gripper.set_state(pos_init, ori_init)
         # TODO: is this necessary?
-        p.stepSimulation(self.suction_env._core_env.client_id)
+        p.stepSimulation(self.client_id)
 
     def render(self):
-        obs = self.suction_env.render()
+        obs = self._core_env.render()
         pos = obs["P_world"]
         seg = obs["pc_seg"]
         fig = vpl.segmentation_fig(pos[::10], seg[::10])
@@ -370,8 +363,8 @@ class PMSuctionDemoEnv:
         while not goal_reached and contact is None and curr_steps < TIMEOUT:
             # control, sim
             self.gripper.set_move_cmds(ctrl)
-            p.stepSimulation(self.suction_env._core_env.client_id)
-            if self.suction_env.gui:
+            p.stepSimulation(self.client_id)
+            if self.gui:
                 time.sleep(1 / 240.0)
             # check for contact
             contact = self.gripper.detect_contact(self.obj_id, self.obj_link)
@@ -393,17 +386,17 @@ class PMSuctionDemoEnv:
             for _ in range(n_steps):
                 # control, sim
                 self.gripper.set_pull_cmds(ctrl)
-                p.stepSimulation(self.suction_env._core_env.client_id)
-                if self.suction_env.gui:
+                p.stepSimulation(self.client_id)
+                if self.gui:
                     time.sleep(1 / 240.0)
                 # updating joint states and control signal
                 self.gripper.update_state()
                 ctrl, goal_reached = pull_fn()
                 # goal check
                 current = p.getJointState(
-                    self.suction_env._core_env.obj_id,
+                    self.obj_id,
                     1,
-                    self.suction_env._core_env.client_id,
+                    self.client_id,
                 )[0]
                 if current / self.goal > self.success_threshold:
                     return True
@@ -411,7 +404,7 @@ class PMSuctionDemoEnv:
             print("Cannot pull - not attached.")
 
     def select_point(self):
-        joints = self.suction_env._core_env.get_joint_angles()
+        joints = self._core_env.get_joint_angles()
         # TODO: this is a hard-coded fix (joint is neither prismatic nor revolute)
         del joints["joint_3"]
         # render with random camera for now
@@ -472,7 +465,7 @@ class PMSuctionDemoEnv:
 
     def get_obs(self):
         # camera render
-        camera_obs = self.suction_env.render()
+        camera_obs = self._core_env.render()
         rgb = camera_obs["rgb"]
         depth = camera_obs["depth"]
         pc_world = camera_obs["P_world"]
@@ -494,9 +487,7 @@ class PMSuctionDemoEnv:
                 else:
                     pc_seg_scene[ixs] = 0
         # object joint angle
-        ja = p.getJointState(
-            self.suction_env._core_env.obj_id, 1, self.suction_env._core_env.client_id
-        )[0]
+        ja = p.getJointState(self.obj_id, 1, self.client_id)[0]
         obs = {
             "pc": pc_cam,
             "seg": pc_seg_scene,

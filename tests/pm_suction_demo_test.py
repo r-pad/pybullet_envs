@@ -29,7 +29,7 @@ def test_pm_suction():
 
     use_gui = True if "TESTING_GUI" in os.environ else False
 
-    env = PMSuctionDemoEnv(OBJ_ID, PM_DIR, None, use_gui)
+    env = PMSuctionDemoEnv(OBJ_ID, PM_DIR, use_gui)
     # initializing environment
     pos_init = np.array([-1.0, 0.6, 0.8])
     ori_init = R.from_euler("xyz", [0, -np.pi / 2, 0]).as_quat()

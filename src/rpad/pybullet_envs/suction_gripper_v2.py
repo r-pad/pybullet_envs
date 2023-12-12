@@ -45,6 +45,7 @@ class FloatingSuctionGripperV2:
         self.gains_ori = np.array([0.05] * 3)
         self.forces_pos = np.array([1000] * 3)
         self.forces_ori = np.array([10] * 3)
+        self.pull_speed = 0.05
         # contact attributes
         self.constraint_force = 10000
         self.activated = False
@@ -86,6 +87,8 @@ class FloatingSuctionGripperV2:
         if point is not None:
             contact_pos_on_A, contact_pos_on_B = point[5], point[6]
             obj_id, contact_link = point[2], point[4]
+            # self.debug_point(contact_pos_on_A, True)
+            # self.debug_point(contact_pos_on_B, False)
 
             # Describe the contact point in the TIP FRAME.
             base_link_pos, base_link_ori, _, _, _, _ = p.getLinkState(
@@ -205,44 +208,76 @@ class FloatingSuctionGripperV2:
         def pull_fn() -> Tuple[npt.NDArray, bool]:
             """Calcuate whatever error you need here to get the signal. Returns zeros and True if the goal is reached."""
             # TODO: current pull doesn't use motor control, so control signal is ambiguous here
-            ctrl = {"direction": direction, "speed_factor": 0.2}
+            ctrl = {"direction": direction, "pull_speed": self.pull_speed}
             return ctrl, False
 
         return pull_fn
 
     def set_pull_cmds(self, ctrl):
         """Sets the control signal for the pull command (aka sets the motors)."""
+        # p.resetJointState(
+        #     self.mount_id,
+        #     0,
+        #     targetValue=self.gripper_pos[0],
+        #     targetVelocity=pull_speed * direction[0],
+        #     physicsClientId=self.client_id,
+        # )
+        # p.resetJointState(
+        #     self.mount_id,
+        #     1,
+        #     targetValue=self.gripper_pos[1],
+        #     targetVelocity=pull_speed * direction[1],
+        #     physicsClientId=self.client_id,
+        # )
+        # p.resetJointState(
+        #     self.mount_id,
+        #     2,
+        #     targetValue=self.gripper_pos[2],
+        #     targetVelocity=pull_speed * direction[2],
+        #     physicsClientId=self.client_id,
+        # )
         if self.activated:
-            # set pull motors
             direction = ctrl["direction"]
-            speed_factor = ctrl["speed_factor"]
-            p.resetJointState(
-                self.mount_id,
-                0,
-                targetValue=self.gripper_pos[0],
-                targetVelocity=speed_factor * direction[0],
+            pull_speed = ctrl["pull_speed"]
+            goal_pos = self.gripper_pos + pull_speed * direction
+            p.setJointMotorControlArray(
+                bodyUniqueId=self.mount_id,
+                jointIndices=[0, 1, 2],
+                controlMode=p.POSITION_CONTROL,
+                targetPositions=goal_pos,
+                positionGains=self.gains_pos,
+                forces=self.forces_pos,
                 physicsClientId=self.client_id,
             )
-            p.resetJointState(
-                self.mount_id,
-                1,
-                targetValue=self.gripper_pos[1],
-                targetVelocity=speed_factor * direction[1],
-                physicsClientId=self.client_id,
-            )
-            p.resetJointState(
-                self.mount_id,
-                2,
-                targetValue=self.gripper_pos[2],
-                targetVelocity=speed_factor * direction[2],
-                physicsClientId=self.client_id,
-            )
-
         else:
             print("Cannot pull - not attached.")
 
     def debug_joint_forces(self):
-        js = p.getJointStates(self.mount_id, [0, 1, 2], self.client_id)
+        js = p.getJointStatesMultiDof(self.mount_id, [0, 1, 2, 3], self.client_id)
         print(
             f'joint {0}: {", ".join(f"{f:.2f}" for f in js[0][3])}   joint {1}: {", ".join(f"{f:.2f}" for f in js[1][3])}   joint {2}: {", ".join(f"{f:.2f}" for f in js[2][3])}    joint {3}: {", ".join(f"{f:.2f}" for f in js[3][3])} '
+        )
+
+    def debug_point(self, point, switch):
+        d = 0.1 if switch else -0.1
+        p.addUserDebugLine(
+            lineFromXYZ=point,
+            lineToXYZ=point + np.array([0, 0, d]),
+            lineColorRGB=[1, 0, 0],
+            lineWidth=5,
+            physicsClientId=self.client_id,
+        )
+        p.addUserDebugLine(
+            lineFromXYZ=point,
+            lineToXYZ=point + np.array([0, d, 0]),
+            lineColorRGB=[0, 1, 0],
+            lineWidth=5,
+            physicsClientId=self.client_id,
+        )
+        p.addUserDebugLine(
+            lineFromXYZ=point,
+            lineToXYZ=point + np.array([d, 0, 0]),
+            lineColorRGB=[0, 0, 1],
+            lineWidth=5,
+            physicsClientId=self.client_id,
         )

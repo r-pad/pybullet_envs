@@ -74,6 +74,8 @@ def test_parallel_jaw_gripper_grasping():
     for _ in range(1000):
         p.stepSimulation(client_id)
 
+    # breakpoint()
+
     # Turn off gravity.
     p.setGravity(0, 0, 0, client_id)
 
@@ -83,11 +85,35 @@ def test_parallel_jaw_gripper_grasping():
     # Create a parallel-jaw gripper.
     gripper = FloatingParallelJawGripper(client_id)
 
+    # breakpoint()
+
     # Put the parallel-jaw gripper above the cube.
-    gripper.set_pose([0, 0, 0.25], p.getQuaternionFromEuler([np.pi, 0, 0]))
+    gripper.reset_pose([0, 0, 0.25], p.getQuaternionFromEuler([np.pi, 0, 0]))
+
+    pose = gripper.get_gripper_pose()
+
+    breakpoint()
+    gripper.open()
+    # for i in range(1000):
+    #     gripper.set_gripper_command(1.0)
+
+    #     p.stepSimulation(client_id)
+
+    #     if i % 100 == 0:
+    #         breakpoint()
+
+    breakpoint()
+
+    gripper.get_gripper_pose()
+
+    gripper.move([0, 0, 0.1], p.getQuaternionFromEuler([np.pi, 0, 0]))
+
+    breakpoint()
+
+    # Get the current position of the gripper.
 
     # Set the velocity of the gripper to be downward.
-    gripper.set_velocity([0, 0, -0.1], [0, 0, 0])
+    # gripper.set_velocity([0, 0, -0.1], [0, 0, 0])
 
     # Step the simulation.
     for i in range(20000):

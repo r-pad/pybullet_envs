@@ -13,7 +13,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-				<mesh filename="C:/pybullet_envs/models/panda/meshes/cube.obj" scale=".05 .05 .05"/>
+				<mesh filename="panda/meshes/cube.obj" scale=".05 .05 .05"/>
       </geometry>
        <material name="white">
         <color rgba="1 1 1 1"/>

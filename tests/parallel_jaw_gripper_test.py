@@ -51,8 +51,9 @@ CUBE_FILE = str(Path(__file__).parent.parent / "models/cube.urdf")
 
 
 def test_parallel_jaw_gripper_grasping():
+    
     client_id = p.connect(p.GUI)
-
+    
     p.resetDebugVisualizerCamera(
         cameraDistance=1.5,
         cameraYaw=30,
@@ -106,28 +107,36 @@ def test_parallel_jaw_gripper_grasping():
 
     gripper.get_gripper_pose()
 
-    gripper.move([0, 0, 0.1], p.getQuaternionFromEuler([np.pi, 0, 0]))
+    gripper.move([0, 0, -1.0], p.getQuaternionFromEuler([np.pi, 0, 0]))
 
     breakpoint()
+    
+    gripper.move([0, 0, 1.0], p.getQuaternionFromEuler([np.pi, 0, 0]))
 
     # Get the current position of the gripper.
 
     # Set the velocity of the gripper to be downward.
     # gripper.set_velocity([0, 0, -0.1], [0, 0, 0])
+    
+    gripper.close()
 
     # Step the simulation.
     for i in range(20000):
         p.stepSimulation(client_id)
-        # Detect contact.
+        gripper.open()
+        gripper.move([0, 0, -1.0], p.getQuaternionFromEuler([np.pi, 0, 0]))
+        gripper.close()
+        
         if gripper.detect_contact(cube_id):
-            print("Contact detected!")
-            break
+            print("Contact detected")
+            
+    gripper.move([0, 0, 1.0], p.getQuaternionFromEuler([np.pi, 0, 0]))
 
     if i >= 20000:
         raise ValueError("No contact detected!")
 
-    # Grasp the cube with the parallel-jaw gripper.
-    gripper.grasp(cube_id)
+    # # Grasp the cube with the parallel-jaw gripper.
+    # gripper.grasp(cube_id)
 
     # Set the velocity of the gripper to be upward.
     gripper.set_velocity([0, 0, 0.1], [0, 0, 0])

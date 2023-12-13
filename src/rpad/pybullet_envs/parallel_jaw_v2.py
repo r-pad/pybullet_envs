@@ -180,55 +180,26 @@ class FloatingParallelJawGripper:
         link_pos, link_ori = link_state[0], link_state[1]
         return link_pos, link_ori
 
-    def grasp(self, obj_id):
-        if not self.activated:
-            contact_pts = p.getContactPoints(
-                bodyA=self.base_id,
-                bodyB=obj_id,
-                linkIndexA=0,
+    def close(self, timeout=100, tolerance=0.001):
+        while timeout > 0:
+            self.set_gripper_command(0.0)
+            p.stepSimulation(self.client_id)
+
+            # Check to see if the gripper is closed.
+            # Make sure the joint state of both fingers are below a certain threshold.
+            joint_states = p.getJointStates(
+                bodyUniqueId=self.base_id,
+                jointIndices=[6, 7],
+                physicsClientId=self.client_id,
             )
 
-            if contact_pts:
-                contact_point = contact_pts[0]
+            errs = [abs(state[0] - MIN_RANGE) for state in joint_states]
+            if all([err <= tolerance for err in errs]):
+                print(f"Gripper is closed after {100 - timeout} steps")
+                break
 
-                # gripper link
-                gripper_link_pos, gripper_link_ori, _, _, _ = p.getLinkState(
-                    bodyUniqueID=self.base_id,
-                    linkIndex=0,
-                    computeLinkVelocity=0,
-                    physicsClientId=self.client_id,
-                )
-
-                obj_link_pos, obj_link_ori, _, _, _, _ = p.getLinkState(
-                    bodyUniqueId=obj_id,
-                    linkIndex=contact_point[4],
-                    computeLinkVelocity=0,
-                    physicsClientId=self.client_id,
-                )
-
-                # transform contact pts in gripper link frame
-                contact_pos_world = contact_point[5]
-                contact_ori_world = gripper_link_ori
-                contact_pos_gripper = p.invertTransform(
-                    gripper_link_pos, gripper_link_ori, contact_pos_world
-                )
-
-                self.contact_const = p.createConstraint(
-                    parentBodyUniqueId=self.base_id,
-                    parentLinkIndex=0,
-                    childBodyUniqueId=obj_id,
-                    childLinkIndex=contact_point[4],
-                    jointType=p.JOINT_FIXED,
-                    jointAxis=(0, 0, 0),
-                    parentFramePosition=contact_pos_gripper,
-                    parentFrameOrientation=gripper_link_ori,
-                    childFramePosition=contact_point[6],
-                    childFrameOrientation=obj_link_ori,
-                    physicsClientId=self.client_id,
-                )
-
-                self.activated = True
-                self.contact_link_index = 0
+            timeout -= 1
+        
 
     def apply_force(self, force):
         body_link_pos, body_link_ori, _, _, _, _ = p.getLinkState(
@@ -246,6 +217,8 @@ class FloatingParallelJawGripper:
             flags=p.WORLD_FRAME,
             physicsClientId=self.client_id,
         )
+        
+    
 
     def release(self):
         if self.contact_const:

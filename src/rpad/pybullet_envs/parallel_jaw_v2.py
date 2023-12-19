@@ -12,7 +12,6 @@ from scipy.spatial.transform import Rotation as R
 fn = as_file(files("rpad_pybullet_envs_where2act_data").joinpath("."))
 with fn as f:
     PARALLEL_JAW_GRIPPER_URDF = os.path.join(f, "panda_gripper.urdf")
-
 MAX_RANGE = 0.04
 MIN_RANGE = 0.0
 
@@ -23,7 +22,9 @@ class FloatingParallelJawGripper:
 
         # This is just a floating gripper yay. It gets loaded at the origin.
         self.base_id = p.loadURDF(
-            PARALLEL_JAW_GRIPPER_URDF, physicsClientId=self.client_id
+            PARALLEL_JAW_GRIPPER_URDF,
+            useFixedBase=True,
+            physicsClientId=self.client_id,
         )
 
         # Reset the gripper to be somewhere.
@@ -76,7 +77,7 @@ class FloatingParallelJawGripper:
             jointIndex=6,
             controlMode=p.POSITION_CONTROL,
             targetPosition=cmd,
-            force=10,
+            force=100,
             physicsClientId=self.client_id,
         )
         # Right finger
@@ -85,7 +86,7 @@ class FloatingParallelJawGripper:
             jointIndex=7,
             controlMode=p.POSITION_CONTROL,
             targetPosition=cmd,
-            force=10,
+            force=100,
             physicsClientId=self.client_id,
         )
 
@@ -123,6 +124,7 @@ class FloatingParallelJawGripper:
                 jointIndex=joint_id,
                 controlMode=p.POSITION_CONTROL,
                 targetPosition=joint_val,
+                maxVelocity=0.5,
                 force=100,
                 physicsClientId=self.client_id,
             )
@@ -146,6 +148,7 @@ class FloatingParallelJawGripper:
         def goal_met(curr_p, curr_o, goal_p, goal_o):
             pos_err = np.linalg.norm(np.array(curr_p) - np.array(goal_p))
             ori_err = np.linalg.norm(np.array(curr_o) - np.array(goal_o))
+            # print(f"pos_err: {pos_err}, ori_err: {ori_err}")
             return pos_err <= threshold and ori_err <= threshold
 
         while not goal_met(curr_pos, curr_ori, pos, ori) and timeout > 0:
@@ -155,7 +158,7 @@ class FloatingParallelJawGripper:
 
             timeout -= 1
 
-        print(f"Goal met after {5000 - timeout} steps")
+        print(f"Goal met after {50000 - timeout} steps")
 
     def get_gripper_pose(self):
         # To validate the position of the gripper.....
@@ -199,7 +202,6 @@ class FloatingParallelJawGripper:
                 break
 
             timeout -= 1
-        
 
     def apply_force(self, force):
         body_link_pos, body_link_ori, _, _, _, _ = p.getLinkState(
@@ -217,8 +219,6 @@ class FloatingParallelJawGripper:
             flags=p.WORLD_FRAME,
             physicsClientId=self.client_id,
         )
-        
-    
 
     def release(self):
         if self.contact_const:

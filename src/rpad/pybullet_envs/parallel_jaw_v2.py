@@ -7,11 +7,11 @@ except ImportError:
 
 import numpy as np
 import pybullet as p
-from scipy.spatial.transform import Rotation as R
 
 fn = as_file(files("rpad_pybullet_envs_where2act_data").joinpath("."))
 with fn as f:
     PARALLEL_JAW_GRIPPER_URDF = os.path.join(f, "panda_gripper.urdf")
+
 
 class FloatingParallelJawGripper:
     def __init__(self, client_id):

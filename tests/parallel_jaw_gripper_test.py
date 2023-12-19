@@ -14,4 +14,4 @@ def test_parallel_jaw_gripper_creation():
 def test_parallel_jaw_gripper():
     client_id = p.connect(p.DIRECT)
 
-    gripper = FloatingParallelJawGripper()
+    gripper = FloatingParallelJawGripper(client_id)

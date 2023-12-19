@@ -1,5 +1,4 @@
 import os
-from pathlib import Path
 
 import numpy as np
 import pybullet as p
@@ -48,9 +47,6 @@ def test_parallel_jaw_gripper():
         p.stepSimulation()
 
 
-CUBE_FILE = str(Path(__file__).parent.parent / "models/cube.urdf")
-
-
 def test_parallel_jaw_gripper_grasping():
     is_gui = "TESTING_MODE" in os.environ and os.environ["TESTING_MODE"] == "GUI"
     mode = p.GUI if is_gui else p.DIRECT
@@ -66,7 +62,7 @@ def test_parallel_jaw_gripper_grasping():
 
     p.setAdditionalSearchPath(pybullet_data.getDataPath())
     plane_id = p.loadURDF("plane.urdf", physicsClientId=client_id)
-    cube_id = p.loadURDF(CUBE_FILE, physicsClientId=client_id)
+    cube_id = p.loadURDF("cube.urdf", globalScaling=0.05, physicsClientId=client_id)
 
     # placing cube above origin
     p.resetBasePositionAndOrientation(cube_id, [0, 0, 1], [0, 0, 0, 1], client_id)

@@ -273,6 +273,12 @@ class PMSuctionDemoEnv:
     def __init__(self, obj_id, pm_dataset_path, gui):
         self.obj_id_str = obj_id
         self.obj = PMObject(pm_dataset_path / obj_id)
+
+        # HACK! This creates a separate environment to render the object without the gripper in it.
+        # Fine for the moment, but we should probably refactor this so that either gripper points
+        # are filtered out or the gripper is not visible. This could either be by using changeVisualShape,
+        # by moving the gripper out of the field of view of the camera, by filtering out gripper points
+        # explicitly, etc.
         self.renderer = PybulletRenderer()
         self.gui = gui
         # TODO: Camera initialization needed

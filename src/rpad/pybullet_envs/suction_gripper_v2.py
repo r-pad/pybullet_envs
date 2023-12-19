@@ -1,5 +1,5 @@
 import os
-from typing import Callable, Tuple
+from typing import Callable, Dict, Tuple
 
 import numpy as np
 import numpy.typing as npt
@@ -152,11 +152,11 @@ class FloatingSuctionGripperV2:
 
     def get_move_fn(
         self, goal_pos: npt.NDArray, goal_ori: npt.NDArray
-    ) -> Callable[[], Tuple[npt.NDArray, bool]]:
+    ) -> Callable[[], Tuple[Dict[str, npt.NDArray], bool]]:
         """Returns a function which, when called, gives you the next control to execute. This should happen
         at every time step."""
 
-        def move_fn() -> Tuple[npt.NDArray, bool]:
+        def move_fn() -> Tuple[Dict[str, npt.NDArray], bool]:
             """Calcuate whatever error you need here to get the signal. Returns zeros and True if the goal is reached."""
             # TODO: how to determine if goal is reached? is tolerance good enough?
             # for now, just returning the same control signal as v1
@@ -201,11 +201,13 @@ class FloatingSuctionGripperV2:
             physicsClientId=self.client_id,
         )
 
-    def get_pull_fn(self, direction) -> Callable[[], Tuple[npt.NDArray, bool]]:
+    def get_pull_fn(
+        self, direction
+    ) -> Callable[[], Tuple[Dict[str, npt.NDArray], bool]]:
         """Returns a function which, when called, gives you the next control to execute for pulling.
         This should happen at every time step."""
 
-        def pull_fn() -> Tuple[npt.NDArray, bool]:
+        def pull_fn() -> Tuple[Dict[str, npt.NDArray], bool]:
             """Calcuate whatever error you need here to get the signal. Returns zeros and True if the goal is reached."""
             # TODO: current pull doesn't use motor control, so control signal is ambiguous here
             ctrl = {"direction": direction, "pull_speed": self.pull_speed}

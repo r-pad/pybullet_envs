@@ -240,9 +240,3 @@ def debug_constraint(constraint_info):
     print(f"Link Index Parent: {parentJointIndex}")
     print(f"Link Index Child: {childLinkIndex}")
     print(f"Max Applied Force: {maxAppliedForce}")
-
-
-if __name__ == "__main__":
-    robot = FloatingSuctionGripper()
-    while True:
-        pass

@@ -43,14 +43,19 @@ pm = [
 # some reason that wasn't working in 3.9. Don't fully understand, cuz it was working
 # in 3.10. Whatever.
 [tool.setuptools]
-packages = ["rpad", "rpad_pybullet_envs_data"]
-package-dir = { rpad = "src/rpad", rpad_pybullet_envs_data = "third_party/ravens/ravens/environments" }
+packages = ["rpad", "rpad_pybullet_envs_data", "rpad_pybullet_envs_where2act_data"]
+package-dir = { rpad = "src/rpad", rpad_pybullet_envs_data = "third_party/ravens/ravens/environments", rpad_pybullet_envs_where2act_data = "third_party/where2act/code/robots"}
 
 [tool.setuptools.package-data]
 rpad = ["py.typed"]
 rpad_pybullet_envs_data = [
   "assets/ur5/suction/*.obj",
   "assets/ur5/suction/*.urdf",
+]
+rpad_pybullet_envs_where2act_data = [
+  "*.urdf",
+  "franka_description/meshes/collision/*.stl",
+  "franka_description/meshes/visual/*.dae",
 ]
 
 [tool.isort]

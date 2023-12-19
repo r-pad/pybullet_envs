@@ -13,14 +13,15 @@ from scipy.spatial.transform import Rotation as R
 
 from rpad.pybullet_envs.pm_suction import PMSuctionDemoEnv
 
-
-@pytest.mark.skipif(
-    not os.path.exists(os.path.expanduser("~/datasets/partnet-mobility/raw")),
-    reason="requires partnet-mobility dataset",
+HAS_PM = "PARTNET_MOBILITY_DIR" in os.environ and os.path.exists(
+    os.environ["PARTNET_MOBILITY_DIR"]
 )
+
+
+@pytest.mark.skipif(not HAS_PM, reason="PARTNET_MOBILITY_DIR not set")
 def test_pm_suction():
     OBJ_ID = "7273"
-    PM_DIR = Path(os.path.expanduser("~/datasets/partnet-mobility/dataset"))
+    PM_DIR = Path(os.path.expanduser(os.environ["PARTNET_MOBILITY_DIR"]))
     # fn = as_file(
     #     files("rpad_pybullet_envs_data").joinpath("assets/ur5/suction_with_mount")
     # )

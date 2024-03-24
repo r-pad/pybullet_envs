@@ -139,8 +139,8 @@ class FloatingSuctionGripperV2:
             )
             self.activated = True
             self.contact_link_index = contact_link
-        else:
-            print("not in contact - no valid points to attach to.")
+        # else:
+        # print("not in contact - no valid points to attach to.")
 
     def release(self):
         """This should deactivate the suction gripper."""
@@ -160,34 +160,25 @@ class FloatingSuctionGripperV2:
             """Calcuate whatever error you need here to get the signal. Returns zeros and True if the goal is reached."""
             # TODO: how to determine if goal is reached? is tolerance good enough?
             # for now, just returning the same control signal as v1
-            ctrl = {
-                "goal_pos": goal_pos,
-                "goal_ori": goal_ori,
-                "forces_pos": self.forces_pos,
-                "forces_ori": self.forces_ori,
-                "gains_pos": self.gains_pos,
-                "gains_ori": self.gains_ori,
-            }
+            ctrl = np.zeros(8)
+            # second flag is 0 for move
+            ctrl[2:5] = goal_pos
+            ctrl[5:] = goal_ori
             return ctrl, False
 
         return move_fn
 
     def set_move_cmds(self, ctrl):
         """Sets the control signal for the move command (aka sets the motors)."""
-        goal_pos = ctrl["goal_pos"]
-        goal_ori = ctrl["goal_ori"]
-        forces_pos = ctrl["forces_pos"]
-        forces_ori = ctrl["forces_ori"]
-        gains_pos = ctrl["gains_pos"]
-        gains_ori = ctrl["gains_ori"]
-        # TODO: control signal should probably contain gains as well
+        goal_pos = ctrl[2:5]
+        goal_ori = ctrl[5:]
         p.setJointMotorControlArray(
             bodyUniqueId=self.mount_id,
             jointIndices=[0, 1, 2],
             controlMode=p.POSITION_CONTROL,
             targetPositions=goal_pos,
-            positionGains=gains_pos,
-            forces=forces_pos,
+            positionGains=self.gains_pos,
+            forces=self.forces_pos,
             physicsClientId=self.client_id,
         )
         p.setJointMotorControlMultiDof(
@@ -197,18 +188,22 @@ class FloatingSuctionGripperV2:
             targetPosition=R.align_vectors(
                 -goal_ori.reshape((1, 3)), np.array([[0, 0, -1]])
             )[0].as_quat(),
-            force=forces_ori,
+            force=self.forces_ori,
             physicsClientId=self.client_id,
         )
 
+    # TODO: control signal should have one extra parameter to handle activation and deactivation
     def get_pull_fn(self, direction) -> Callable[[], Tuple[npt.NDArray, bool]]:
         """Returns a function which, when called, gives you the next control to execute for pulling.
         This should happen at every time step."""
 
         def pull_fn() -> Tuple[npt.NDArray, bool]:
             """Calcuate whatever error you need here to get the signal. Returns zeros and True if the goal is reached."""
-            # TODO: current pull doesn't use motor control, so control signal is ambiguous here
-            ctrl = {"direction": direction, "pull_speed": self.pull_speed}
+            # ctrl = np.zeros(8)
+            ctrl = np.ones(8)
+            # second flag is 1 for pull
+            ctrl[2:5] = 0
+            ctrl[5:] = direction
             return ctrl, False
 
         return pull_fn
@@ -237,9 +232,8 @@ class FloatingSuctionGripperV2:
         #     physicsClientId=self.client_id,
         # )
         if self.activated:
-            direction = ctrl["direction"]
-            pull_speed = ctrl["pull_speed"]
-            goal_pos = self.gripper_pos + pull_speed * direction
+            direction = ctrl[5:]
+            goal_pos = self.gripper_pos + self.pull_speed * direction
             p.setJointMotorControlArray(
                 bodyUniqueId=self.mount_id,
                 jointIndices=[0, 1, 2],
